@@ -1,0 +1,12 @@
+{
+  "network": "nexusTestnet",
+  "chainId": 3940,
+  "contracts": {
+    "NNSRegistry": "0xab1a857456A90Cb03a3fe051d55E0A380b705760",
+    "PublicResolver": "0x7E752dFeB11A36C6166B7D89c5206fa2dbB9684a",
+    "NexRegistrar": "0xd3C4a92aC99bf4F325a9b2147B92007C76a1a171"
+  },
+  "deployer": "0x2245c9c9619d584501e3d9B23516E69f5F095477",
+  "timestamp": "2025-10-05T12:17:51.373Z",
+  "nexNamehash": "0xc0eeb4cc47d0657cda96dad89833396eb827350b2d6c9ad16a9776455adf74dc"
+}

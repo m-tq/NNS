@@ -22,7 +22,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [account, setAccount] = useState<string | null>(null)
   const [chainId, setChainId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
-  const [hasUserDisconnected, setHasUserDisconnected] = useState(false)
 
   const isCorrectNetwork = chainId === NEXUS_TESTNET.chainId
 
@@ -42,8 +41,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       setAccount(accounts[0])
       setChainId(Number(network.chainId))
       setIsConnected(true)
-      setHasUserDisconnected(false)
-      
+
       // Remove disconnect flag from localStorage
       localStorage.removeItem('nns_user_disconnected')
 
@@ -65,8 +63,7 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     setAccount(null)
     setChainId(null)
     setIsConnected(false)
-    setHasUserDisconnected(true)
-    
+
     // Set disconnect flag in localStorage to prevent auto-reconnect
     localStorage.setItem('nns_user_disconnected', 'true')
     
@@ -86,7 +83,6 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
     // Initialize disconnect state from localStorage
     const userDisconnected = localStorage.getItem('nns_user_disconnected') === 'true'
     console.log('Initializing Web3Provider, userDisconnected:', userDisconnected)
-    setHasUserDisconnected(userDisconnected)
 
     if (window.ethereum) {
       const handleAccountsChanged = (accounts: string[]) => {

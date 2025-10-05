@@ -106,17 +106,9 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
         });
         
         // Set up NNS records
-        bytes32 node = keccak256(abi.encodePacked(baseNode, label));
-        // First create the subnode with registrar as owner
-        registry.setSubnodeOwner(baseNode, label, address(this));
-        // Set resolver and TTL while registrar owns the node
-        registry.setResolver(node, address(resolver));
-        registry.setTTL(node, uint64(expires));
-        // Finally transfer ownership to the user
-        registry.setOwner(node, owner);
-        
-        // Set resolver record
-        resolver.setAddr(node, owner);
+        // Set the subnode record atomically with owner, resolver, and TTL
+        // This transfers ownership to the user in one step
+        registry.setSubnodeRecord(baseNode, label, owner, address(resolver), uint64(expires));
         
         emit DomainRegistered(name, label, owner, expires);
         

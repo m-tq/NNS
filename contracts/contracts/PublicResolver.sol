@@ -23,9 +23,11 @@ contract PublicResolver is ERC165 {
     event ContenthashChanged(bytes32 indexed node, bytes hash);
 
     modifier authorised(bytes32 node) {
+        address nodeOwner = registry.owner(node);
         require(
-            registry.owner(node) == msg.sender || 
-            registry.isApprovedForAll(registry.owner(node), msg.sender),
+            nodeOwner == msg.sender ||
+            registry.isApprovedForAll(nodeOwner, msg.sender) ||
+            nodeOwner == address(0),
             "Not authorised"
         );
         _;

@@ -1,11 +1,11 @@
-import React, { useState } from 'react'
+import { useState } from 'react'
 import { ethers } from 'ethers'
 import { Search, Wallet, ExternalLink, AlertCircle, CheckCircle, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { useWeb3 } from '@/components/web3-provider'
-import { isValidDomain, namehash, NEX_REGISTRAR_ABI, PUBLIC_RESOLVER_ABI } from '@/lib/web3'
+import { isValidDomain, NEX_REGISTRAR_ABI } from '@/lib/web3'
 import { getContractAddresses } from '@/config/contracts'
 
 export function NNSInterface() {
@@ -40,20 +40,25 @@ export function NNSInterface() {
         signer
       )
 
-      // Check if domain is available
-      const label = ethers.keccak256(ethers.toUtf8Bytes(searchTerm))
-      const domainInfo = await registrarContract.domains(label)
-      const isAvailable = domainInfo.owner === ethers.ZeroAddress
+      // Check if domain is available using the available() method
+      const isAvailable = await registrarContract.available(searchTerm)
 
       // Get registration fee
       const registrationFee = await registrarContract.registrationFee()
       const priceInEth = ethers.formatEther(registrationFee)
 
+      // Get domain info if not available
+      let expirationDate;
+      if (!isAvailable) {
+        const domainInfo = await registrarContract.getDomain(searchTerm)
+        expirationDate = new Date(Number(domainInfo.expires) * 1000)
+      }
+
       setSearchResult({
         name: searchTerm,
         available: isAvailable,
         price: isAvailable ? priceInEth : undefined,
-        expires: isAvailable ? undefined : new Date(Number(domainInfo.expires) * 1000)
+        expires: expirationDate
       })
     } catch (error) {
       console.error('Search failed:', error)
@@ -75,16 +80,21 @@ export function NNSInterface() {
         signer
       )
 
+      // Check account is connected
+      if (!account) {
+        throw new Error('Account not connected')
+      }
+
       // Get registration fee
       console.log('Getting registration fee...')
       const registrationFee = await registrarContract.registrationFee()
       console.log('Registration fee:', ethers.formatEther(registrationFee), 'NEX')
-      
+
       // Check wallet balance
       const provider = signer.provider
       const balance = await provider.getBalance(account)
       console.log('Wallet balance:', ethers.formatEther(balance), 'NEX')
-      
+
       if (balance < registrationFee) {
         throw new Error(`Insufficient balance. Required: ${ethers.formatEther(registrationFee)} NEX, Available: ${ethers.formatEther(balance)} NEX`)
       }
@@ -334,15 +344,18 @@ export function NNSInterface() {
                       <span>Expires:</span>
                       <span>{searchResult.expires?.toLocaleDateString()}</span>
                     </div>
-                    <Button variant="outline" className="w-full" asChild>
-                      <a 
-                        href={`https://testnet3.explorer.nexus.xyz/address/${RESOLVER_ADDRESS}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                      >
-                        View on Explorer
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                      </a>
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      onClick={() => {
+                        if (chainId) {
+                          const contractAddresses = getContractAddresses(chainId)
+                          window.open(`https://testnet3.explorer.nexus.xyz/address/${contractAddresses.NexRegistrar}`, '_blank')
+                        }
+                      }}
+                    >
+                      View on Explorer
+                      <ExternalLink className="ml-2 h-4 w-4" />
                     </Button>
                   </div>
                 )}

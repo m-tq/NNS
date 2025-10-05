@@ -2,9 +2,9 @@
 export const CONTRACT_ADDRESSES = {
   // Nexus Testnet (Chain ID: 3940)
   3940: {
-    NNSRegistry: "0xab1a857456A90Cb03a3fe051d55E0A380b705760",
-    PublicResolver: "0x7E752dFeB11A36C6166B7D89c5206fa2dbB9684a",
-    NexRegistrar: "0xd3C4a92aC99bf4F325a9b2147B92007C76a1a171",
+    NNSRegistry: "0xA87F122cB8E4490E004B019305438Dcf1849c21f",
+    PublicResolver: "0xfCF8B4B0010418af078197E0f901f1d9fd5bb6f5",
+    NexRegistrar: "0x7e8F8B3de7053378De2abB412592e0642c05A584",
   },
   // Local development (Hardhat)
   31337: {

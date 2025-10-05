@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ethers } from 'ethers'
-import { Search, Wallet, ExternalLink, AlertCircle, CheckCircle, LogOut } from 'lucide-react'
+import { Search, Wallet, ExternalLink, CircleAlert as AlertCircle, CircleCheck as CheckCircle, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'

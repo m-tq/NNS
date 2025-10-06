@@ -19,7 +19,6 @@ export function SendNex() {
   const [amountInput, setAmountInput] = useState('0.01')
   const [status, setStatus] = useState<'idle' | 'resolving' | 'sending' | 'success' | 'error'>('idle')
   const [message, setMessage] = useState<string>('')
-  const [txHash, setTxHash] = useState<string | null>(null)
   const [transactionModal, setTransactionModal] = useState<{
     isOpen: boolean
     status: 'pending' | 'success' | 'error'
@@ -202,7 +201,6 @@ export function SendNex() {
       setMessage('Sending transaction…')
       setTransactionModal({ isOpen: true, status: 'pending', message: 'Transaksi dikirim. Menunggu konfirmasi…' })
       const tx = await signer.sendTransaction({ to, value: valueWei })
-      setTxHash(tx.hash)
       setTransactionModal(prev => ({ ...prev, hash: tx.hash }))
       // Jangan blok UI: tunggu konfirmasi secara non-blocking
       tx.wait()

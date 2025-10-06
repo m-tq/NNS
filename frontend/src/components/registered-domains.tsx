@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Spinner } from '@/components/ui/spinner'
 import { useWeb3 } from '@/components/web3-provider'
-import { NEX_REGISTRAR_ABI, PUBLIC_RESOLVER_ABI, NEXUS_TESTNET } from '@/lib/web3'
+import { NEX_REGISTRAR_ABI, NEXUS_TESTNET } from '@/lib/web3'
 import { getContractAddresses } from '@/config/contracts'
 
 interface RegisteredDomain {

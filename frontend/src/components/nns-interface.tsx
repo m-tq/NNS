@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ethers } from 'ethers'
-import { Search, Wallet, ExternalLink, CircleAlert as AlertCircle, CircleCheck as CheckCircle, LogOut } from 'lucide-react'
+import { Search, Wallet, ExternalLink, CircleAlert as AlertCircle, CircleCheck as CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,11 +8,11 @@ import { Spinner } from '@/components/ui/spinner'
 import { TransactionModal } from '@/components/ui/modal'
 import { RegisteredDomains, clearDomainCache } from '@/components/registered-domains'
 import { useWeb3 } from '@/components/web3-provider'
-import { isValidDomain, NEX_REGISTRAR_ABI, NEXUS_TESTNET } from '@/lib/web3'
+import { isValidDomain, NEX_REGISTRAR_ABI } from '@/lib/web3'
 import { getContractAddresses } from '@/config/contracts'
 
 export function NNSInterface() {
-  const { signer, account, isConnected, isCorrectNetwork, connect, disconnect, switchNetwork, chainId } = useWeb3()
+  const { signer, account, isConnected, isCorrectNetwork, connect, switchNetwork, chainId } = useWeb3()
   const [searchTerm, setSearchTerm] = useState('')
   const [isSearching, setIsSearching] = useState(false)
   const [searchResult, setSearchResult] = useState<{

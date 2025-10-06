@@ -1,117 +1,142 @@
-# Nexus Name Service (NNS) - Deployment Guide
+# Nexus Name Service (NNS) — Deployment Guide
 
-## 📋 Overview
+## Overview
 
-Nexus Name Service (NNS) adalah sistem penamaan domain terdesentralisasi untuk Nexus blockchain yang memungkinkan pengguna untuk:
-- Mendaftarkan domain `.nex` 
-- Menghubungkan domain dengan alamat wallet
-- Transfer kepemilikan domain
-- Resolusi domain ke alamat
+Nexus Name Service (NNS) is a decentralized naming system for the Nexus blockchain that allows users to:
+- Register `.nex` domains
+- Map domains to wallet addresses
+- Transfer domain ownership
+- Resolve domains to addresses
 
-## 🚀 Deployed Contracts
+## Deployed Contracts
 
 ### Nexus Testnet (Chain ID: 3940)
 
 | Contract | Address | Description |
 |----------|---------|-------------|
-| **NNS Registry** | `0x3b3511fe9E580DE668a1338a4E9DB70f10e44109` | Core registry untuk semua domain |
-| **Public Resolver** | `0x15bec143cCD00A98B755a649ED43c64630f7Acee` | Resolver untuk mapping domain ke alamat |
-| **Nex Registrar** | `0xEb969f9A20be36691ffefAAFE0572B8B458DFA0E` | Registrar untuk domain .nex |
+| **NNS Registry** | `0x35481Ed34c3E6446EaafDca622369Df4295dce31` | Core registry for all domains |
+| **Public Resolver** | `0x3C7bc6E4C65A194B3Bec187a3D6ef97A61F9DcD5` | Resolver for mapping domains to addresses |
+| **Nex Registrar** | `0x5d716F4b16A135ca401a428B203A7107AD353950` | Registrar for `.nex` domains |
 
-### Konfigurasi Sistem
-- **Registration Fee**: 0.01 NEX
-- **Minimum Duration**: 1 tahun (31,536,000 detik)
-- **Maximum Duration**: 10 tahun
-- **TLD**: `.nex`
+### System Configuration
+- Registration Fee: 0.01 NEX
+- Minimum Duration: 1 year (31,536,000 seconds)
+- Maximum Duration: 10 years
+- TLD: `.nex`
+- `.nex` namehash: `0xc0eeb4cc47d0657cda96dad89833396eb827350b2d6c9ad16a9776455adf74dc`
 
-## 🛠 Setup Development Environment
+## Setup: Development Environment
 
 ### Prerequisites
-- Node.js 18+ 
-- npm atau yarn
+- Node.js 18+
+- npm (or yarn)
 - MetaMask wallet
-- NEX tokens untuk testnet
+- NEX tokens for testnet
 
-### 1. Clone Repository
+### 1) Clone Repository
 ```bash
 git clone <repository-url>
 cd NNS
 ```
 
-### 2. Install Dependencies
+### 2) Install Dependencies
 
-#### Backend (Smart Contracts)
+Contracts:
 ```bash
 cd contracts
 npm install
 ```
 
-#### Frontend
+Frontend:
 ```bash
-cd frontend
+cd ../frontend
 npm install
 ```
 
-### 3. Environment Configuration
+MetaMask Snap:
+```bash
+cd ../metamask-snap
+npm install
+```
 
-Buat file `.env` di folder `contracts`:
+### 3) Environment Configuration (contracts)
+
+Create `.env` file under `contracts`:
 ```env
 NEXUS_PRIVATE_KEY=your_private_key_here_without_0x_prefix
 ```
 
-## 📦 Deployment Process
+## Deployment Process
 
-### 1. Compile Contracts
+### 1) Compile Contracts
 ```bash
 cd contracts
 npx hardhat compile
 ```
 
-### 2. Deploy to Nexus Testnet
+### 2) Deploy to Nexus Testnet
 ```bash
-npx hardhat run scripts/deploy.js --network nexus
+npx hardhat run scripts/deploy.js --network nexusTestnet
 ```
 
-### 3. Update Frontend Configuration
+This will write `contracts/deployment.json` with addresses and metadata:
+```json
+{
+  "network": "nexusTestnet",
+  "chainId": 3940,
+  "contracts": {
+    "NNSRegistry": "0x35481Ed34c3E6446EaafDca622369Df4295dce31",
+    "PublicResolver": "0x3C7bc6E4C65A194B3Bec187a3D6ef97A61F9DcD5",
+    "NexRegistrar": "0x5d716F4b16A135ca401a428B203A7107AD353950"
+  },
+  "deployer": "<address>",
+  "timestamp": "<ISO>",
+  "nexNamehash": "0xc0ee...f74dc"
+}
+```
+
+### 3) Update Frontend Configuration
 ```bash
 node scripts/update-frontend.js
 ```
 
-## 🌐 Frontend Setup
+This syncs deployed contract addresses into `frontend/src/config/contracts.ts` for the active chain ID.
 
-### 1. Start Development Server
+## Frontend Setup
+
+### 1) Start Development Server
 ```bash
 cd frontend
 npm run dev
 ```
 
-### 2. Access Application
-- URL: `http://localhost:5173`
-- Pastikan MetaMask terhubung ke Nexus Testnet
+### 2) Access Application
+- Local URL: `http://localhost:5175/` (port may vary)
+- Ensure MetaMask is connected to Nexus Testnet (Chain ID: 3940)
 
-## 📱 Cara Menggunakan NNS
+## Using NNS
 
-### 1. Connect Wallet
-- Buka aplikasi di browser
-- Klik "Connect MetaMask"
-- Pastikan terhubung ke Nexus Testnet (Chain ID: 3940)
+### Connect Wallet
+- Open the app in your browser
+- Click “Connect Wallet”
+- Switch to Nexus Testnet (3940) if prompted
 
-### 2. Search Domain
-- Masukkan nama domain yang diinginkan (minimal 3 karakter)
-- Klik tombol search
-- Sistem akan mengecek ketersediaan domain
+### Search Domain
+- Enter the desired domain name (minimum 3 characters)
+- Click the search button
+- The system checks if the domain is available
 
-### 3. Register Domain
-- Jika domain tersedia, klik "Register Domain"
-- Konfirmasi transaksi di MetaMask
-- Bayar fee registrasi (0.01 NEX)
-- Tunggu konfirmasi transaksi
+### Register Domain
+- If available, click “Register Domain”
+- Confirm the transaction in MetaMask
+- Pay the registration fee
+- Wait for transaction confirmation
 
-### 4. Manage Domain
-- Domain yang terdaftar akan muncul di dashboard
-- Anda dapat transfer kepemilikan atau update resolver
+### Manage Domain
+- Registered domains appear in the dashboard
+- You can transfer ownership or update resolver records
 
-## 🔧 Network Configuration
+## Network Configuration
 
 ### Nexus Testnet
 ```javascript
@@ -129,37 +154,37 @@ npm run dev
 ```
 
 ### Add Network to MetaMask
-1. Buka MetaMask
-2. Klik "Add Network"
-3. Masukkan detail network di atas
-4. Simpan dan switch ke network
+1. Open MetaMask
+2. Click “Add Network”
+3. Enter the network details above
+4. Save and switch to the network
 
-## 🧪 Testing
+## Testing
 
-### Unit Tests
+### Unit Tests (contracts)
 ```bash
 cd contracts
 npx hardhat test
 ```
 
 ### Integration Tests
-1. Deploy contracts ke local network
-2. Start frontend
-3. Test registrasi domain
-4. Test transfer domain
-5. Test resolusi domain
+1. Deploy contracts to a local or test network
+2. Start the frontend
+3. Test domain registration
+4. Test domain transfer
+5. Test domain resolution
 
-## 📊 Contract Interactions
+## Contract Interactions (examples)
 
 ### Register Domain
 ```javascript
-const registrarContract = new ethers.Contract(
+const registrar = new ethers.Contract(
   REGISTRAR_ADDRESS,
   NEX_REGISTRAR_ABI,
   signer
 );
 
-const tx = await registrarContract.register(
+const tx = await registrar.register(
   "mydomain",
   ownerAddress,
   duration,
@@ -169,78 +194,75 @@ const tx = await registrarContract.register(
 
 ### Check Domain Availability
 ```javascript
-const isAvailable = await registrarContract.available("mydomain");
+const isAvailable = await registrar.available("mydomain");
 ```
 
 ### Get Domain Info
 ```javascript
-const [owner, expires, exists] = await registrarContract.getDomain("mydomain");
+const [owner, expires, exists] = await registrar.getDomain("mydomain");
 ```
 
-## 🔍 Troubleshooting
+## Troubleshooting
 
-### Common Issues
+1) Transaction Failed
+- Ensure you have enough NEX
+- Check gas limits
+- Confirm the domain is not already registered
 
-1. **Transaction Failed**
-   - Pastikan balance NEX cukup
-   - Check gas limit
-   - Pastikan domain belum terdaftar
+2) Network Error
+- Make sure you’re on Nexus Testnet (3940)
+- Verify the RPC endpoint
+- Restart MetaMask if needed
 
-2. **Network Error**
-   - Pastikan terhubung ke Nexus Testnet
-   - Check RPC endpoint
-   - Restart MetaMask jika perlu
-
-3. **Contract Not Found**
-   - Pastikan alamat contract benar
-   - Check network yang aktif
-   - Verify deployment
+3) Contract Not Found
+- Verify contract addresses
+- Check the active network
+- Confirm deployment completed successfully
 
 ### Debug Commands
 ```bash
-# Check contract deployment
-npx hardhat verify --network nexus <contract-address>
+# Verify a contract
+npx hardhat verify --network nexusTestnet <contract-address>
 
-# Check network connection
-npx hardhat run scripts/check-network.js --network nexus
+# Check network connectivity
+npx hardhat run scripts/verify-deployment.js --network nexusTestnet
 ```
 
-## 📈 Monitoring
+## Monitoring
 
-### Block Explorer
+### Explorer
 - Nexus Testnet: https://testnet3.explorer.nexus.xyz
-- Search contract addresses untuk melihat transaksi
+- Look up contract addresses to view transactions and events
 
-### Events
-Monitor events dari contracts:
+### Events to Watch
 - `DomainRegistered`
-- `DomainRenewed` 
+- `DomainRenewed`
 - `DomainTransferred`
 
-## 🔐 Security Considerations
+## Security Considerations
 
-1. **Private Keys**: Jangan commit private keys ke repository
-2. **Access Control**: Hanya owner yang bisa mengubah konfigurasi
-3. **Reentrancy**: Contracts menggunakan ReentrancyGuard
-4. **Input Validation**: Semua input divalidasi
+1) Private Keys: Never commit private keys to the repository
+2) Access Control: Only domain owners can modify records
+3) Reentrancy: Contracts use `ReentrancyGuard`
+4) Input Validation: All inputs are validated
 
-## 📞 Support
+## Support
 
-Jika mengalami masalah:
-1. Check dokumentasi ini
+If you encounter issues:
+1. Check this guide
 2. Review error messages
 3. Check network status
-4. Contact development team
+4. Contact the development team
 
-## 🎯 Next Steps
+## Next Steps
 
-1. Deploy ke mainnet Nexus
-2. Implement subdomain support
-3. Add reverse resolution
-4. Create mobile app
-5. Integrate with other dApps
+1) Deploy to Nexus mainnet
+2) Implement subdomain support
+3) Add reverse resolution
+4) Create a mobile app
+5) Integrate with other dApps
 
 ---
 
-**Last Updated**: December 2024
-**Version**: 1.0.0
+Last Updated: October 2025
+Version: 1.0.0

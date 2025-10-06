@@ -33,11 +33,19 @@ export const NEX_REGISTRAR_ABI = [
   "function renew(string calldata name, uint256 duration) external payable",
   "function transfer(string calldata name, address to) external",
   "function available(string calldata name) external view returns (bool)",
-  "function getDomain(string calldata name) external view returns (address owner, uint256 expires, bool exists)",
+  "function getDomain(string calldata name) external view returns (address owner, uint256 expires, bool exists, uint256 tokenId)",
+  "function getDomainsOfOwner(address owner) external view returns (string[] memory)",
   "function registrationFee() external view returns (uint256)",
-  "function domains(bytes32 label) external view returns (address owner, uint256 expires, bool exists)",
+  "function domains(bytes32 label) external view returns (address owner, uint256 expires, bool exists, uint256 tokenId, string name)",
   "function setRegistrationFee(uint256 newFee) external",
-  "function setReserved(string calldata name, bool isReserved) external"
+  "function setReserved(string calldata name, bool isReserved) external",
+  "function balanceOf(address owner) external view returns (uint256)",
+  "function tokenOfOwnerByIndex(address owner, uint256 index) external view returns (uint256)",
+  "function tokenIdToName(uint256 tokenId) external view returns (string)",
+  "function nameToTokenId(string name) external view returns (uint256)",
+  "function tokenURI(uint256 tokenId) external view returns (string)",
+  "event DomainRegistered(string indexed name, bytes32 indexed label, address indexed owner, uint256 expires, string domainName, uint256 tokenId)",
+  "event Transfer(address indexed from, address indexed to, uint256 indexed tokenId)"
 ]
 
 // Utility functions

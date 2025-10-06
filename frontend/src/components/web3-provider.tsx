@@ -23,7 +23,8 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
   const [chainId, setChainId] = useState<number | null>(null)
   const [isConnected, setIsConnected] = useState(false)
 
-  const isCorrectNetwork = chainId === NEXUS_TESTNET.chainId
+  // Allow both Nexus testnet and localhost for development
+  const isCorrectNetwork = chainId === NEXUS_TESTNET.chainId || chainId === 31337
 
   const connect = async () => {
     if (!window.ethereum) {
@@ -45,9 +46,10 @@ export function Web3Provider({ children }: { children: React.ReactNode }) {
       // Remove disconnect flag from localStorage
       localStorage.removeItem('nns_user_disconnected')
 
-      // Switch to Nexus network if not already connected
-      if (Number(network.chainId) !== NEXUS_TESTNET.chainId) {
-        await switchToNexusNetwork()
+      // Only auto-switch to Nexus if not on localhost (development)
+      if (Number(network.chainId) !== NEXUS_TESTNET.chainId && Number(network.chainId) !== 31337) {
+        console.log('Unknown network detected, suggesting switch to Nexus')
+        // Don't auto-switch, let user decide
       }
     } catch (error) {
       console.error('Failed to connect wallet:', error)

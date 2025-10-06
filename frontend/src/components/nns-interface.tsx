@@ -4,8 +4,11 @@ import { Search, Wallet, ExternalLink, CircleAlert as AlertCircle, CircleCheck a
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Spinner } from '@/components/ui/spinner'
+import { TransactionModal } from '@/components/ui/modal'
+import { RegisteredDomains, clearDomainCache } from '@/components/registered-domains'
 import { useWeb3 } from '@/components/web3-provider'
-import { isValidDomain, NEX_REGISTRAR_ABI } from '@/lib/web3'
+import { isValidDomain, NEX_REGISTRAR_ABI, NEXUS_TESTNET } from '@/lib/web3'
 import { getContractAddresses } from '@/config/contracts'
 
 export function NNSInterface() {
@@ -19,6 +22,16 @@ export function NNSInterface() {
     expires?: Date
   } | null>(null)
   const [isRegistering, setIsRegistering] = useState(false)
+  const [transactionModal, setTransactionModal] = useState<{
+    isOpen: boolean
+    status: 'pending' | 'success' | 'error'
+    hash?: string
+    message?: string
+  }>({
+    isOpen: false,
+    status: 'pending'
+  })
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   const handleSearch = async () => {
     if (!searchTerm || !isValidDomain(searchTerm)) {
@@ -33,14 +46,39 @@ export function NNSInterface() {
 
     setIsSearching(true)
     try {
+      // Debug: Log network information
+      console.log('🔍 Debug Info:')
+      console.log('Chain ID:', chainId)
+      console.log('Signer address:', await signer.getAddress())
+      
       const contractAddresses = getContractAddresses(chainId)
+      console.log('Contract addresses:', contractAddresses)
+      console.log('NexRegistrar address:', contractAddresses.NexRegistrar)
+      
+      // Check if we're on the correct network
+      if (chainId !== 3940) {
+        alert(`❌ Wrong network! Please switch to Nexus Testnet (Chain ID: 3940). Current: ${chainId}`)
+        return
+      }
+      
       const registrarContract = new ethers.Contract(
         contractAddresses.NexRegistrar,
         NEX_REGISTRAR_ABI,
         signer
       )
 
+      // Debug: Check contract code
+      const provider = signer.provider
+      const code = await provider.getCode(contractAddresses.NexRegistrar)
+      console.log('Contract code length:', code.length)
+      
+      if (code === '0x') {
+        alert('❌ No contract found at address! Please check network connection.')
+        return
+      }
+
       // Check if domain is available using the available() method
+      console.log('Calling available() for domain:', searchTerm)
       const isAvailable = await registrarContract.available(searchTerm)
 
       // Get registration fee
@@ -85,14 +123,23 @@ export function NNSInterface() {
         throw new Error('Account not connected')
       }
 
+      // Verify the signer address matches the connected account
+      const signerAddress = await signer.getAddress()
+      console.log('Connected account:', account)
+      console.log('Signer address:', signerAddress)
+      
+      if (signerAddress.toLowerCase() !== account.toLowerCase()) {
+        throw new Error(`Account mismatch! Connected: ${account}, Signer: ${signerAddress}. Please refresh and reconnect your wallet.`)
+      }
+
       // Get registration fee
       console.log('Getting registration fee...')
       const registrationFee = await registrarContract.registrationFee()
       console.log('Registration fee:', ethers.formatEther(registrationFee), 'NEX')
 
-      // Check wallet balance
+      // Check wallet balance for the actual signer address
       const provider = signer.provider
-      const balance = await provider.getBalance(account)
+      const balance = await provider.getBalance(signerAddress)
       console.log('Wallet balance:', ethers.formatEther(balance), 'NEX')
 
       if (balance < registrationFee) {
@@ -106,20 +153,21 @@ export function NNSInterface() {
       console.log('Estimating gas...')
       console.log('Parameters for gas estimation:')
       console.log('  - name:', searchResult.name)
-      console.log('  - account:', account)
+      console.log('  - account:', signerAddress)
       console.log('  - duration:', duration)
       console.log('  - registrationFee:', registrationFee.toString())
       console.log('  - contract address:', contractAddresses.NexRegistrar)
       
       // Using a fixed gas limit because estimation is failing with RPC errors
-      const gasLimit = 350000n;
+      // Gas estimation shows ~385k needed, so using 500k for extra safety
+      const gasLimit = 500000n;
       console.log('Using fixed gas limit:', gasLimit.toString());
 
       // Submit transaction with explicit gas limit
       console.log('Submitting transaction...')
       const tx = await registrarContract.register(
         searchResult.name,
-        account,
+        signerAddress, // Use verified signer address
         duration,
         { 
           value: registrationFee,
@@ -128,15 +176,34 @@ export function NNSInterface() {
       )
 
       console.log('Transaction submitted:', tx.hash)
-      alert(`Transaction submitted! Hash: ${tx.hash}\n\nWaiting for confirmation...`)
+      
+      // Show pending modal
+      setTransactionModal({
+        isOpen: true,
+        status: 'pending',
+        hash: tx.hash,
+        message: 'Transaction submitted! Waiting for confirmation...'
+      })
       
       // Wait for transaction confirmation
       const receipt = await tx.wait()
       
       if (receipt.status === 1) {
-        alert(`✅ Successfully registered ${searchResult.name}.nex!\n\nTransaction confirmed in block ${receipt.blockNumber}`)
+        // Show success modal
+        setTransactionModal({
+          isOpen: true,
+          status: 'success',
+          hash: tx.hash,
+          message: `Successfully registered ${searchResult.name}.nex!`
+        })
         setSearchResult(null)
         setSearchTerm('')
+        // Clear domain cache to force fresh fetch
+        if (account && chainId) {
+          clearDomainCache(account, chainId)
+        }
+        // Trigger refresh of registered domains
+        setRefreshTrigger(prev => prev + 1)
       } else {
         throw new Error('Transaction failed during execution')
       }
@@ -152,26 +219,36 @@ export function NNSInterface() {
       })
       
       // Handle specific error types with more detailed messages
-      if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
-        alert('❌ Transaction was rejected by user')
+      let errorMessage = ''
+      if (error.message?.includes('Account mismatch')) {
+        errorMessage = error.message + ' Try disconnecting and reconnecting your wallet, or switch to the correct account in MetaMask.'
+      } else if (error.code === 'ACTION_REJECTED' || error.code === 4001) {
+        errorMessage = 'Transaction was rejected by user'
       } else if (error.code === 'INSUFFICIENT_FUNDS' || error.message?.includes('insufficient funds')) {
-        alert('❌ Insufficient funds for registration and gas fees')
+        errorMessage = 'Insufficient funds for registration and gas fees. Make sure you have enough NEX in the account currently selected in MetaMask.'
       } else if (error.code === -32603 || error.message?.includes('Internal JSON-RPC error')) {
-        alert('❌ Internal JSON-RPC error occurred.\n\nThis could be due to:\n• Network connectivity issues\n• Gas estimation problems\n• Contract execution failure\n\nPlease check the console for details and try again.')
+        errorMessage = 'Internal JSON-RPC error occurred. This could be due to network connectivity issues, gas estimation problems, or contract execution failure.'
       } else if (error.code === -32602) {
-        alert('❌ Invalid parameters sent to the network')
+        errorMessage = 'Invalid parameters sent to the network'
       } else if (error.code === -32000) {
-        alert('❌ Transaction failed during execution')
+        errorMessage = 'Transaction failed during execution'
       } else if (error.message?.includes('Gas estimation failed')) {
-        alert('❌ Gas estimation failed. The transaction may fail due to:\n• Insufficient gas limit\n• Contract execution issues\n• Network problems')
+        errorMessage = 'Gas estimation failed. The transaction may fail due to insufficient gas limit, contract execution issues, or network problems.'
       } else if (error.message?.includes('execution reverted')) {
         const reason = error.reason || error.data || 'Unknown reason'
-        alert('❌ Transaction reverted: ' + reason)
+        errorMessage = 'Transaction reverted: ' + reason
       } else if (error.message?.includes('network')) {
-        alert('❌ Network error: Please check your connection to Nexus Testnet')
+        errorMessage = 'Network error: Please check your connection to Nexus Testnet'
       } else {
-        alert('❌ Registration failed: ' + error.message + '\n\nCheck console for detailed error information.')
+        errorMessage = 'Registration failed: ' + error.message
       }
+
+      // Show error modal
+      setTransactionModal({
+        isOpen: true,
+        status: 'error',
+        message: errorMessage
+      })
     } finally {
       setIsRegistering(false)
     }
@@ -214,7 +291,7 @@ export function NNSInterface() {
               <AlertCircle className="mr-2 h-6 w-6 text-yellow-500" />
               Wrong Network
             </CardTitle>
-            <CardDescription className="space-y-2">
+            <CardDescription className="space-y-3">
               <div>Please switch to Nexus Testnet to use NNS</div>
               <div className="flex items-center justify-center text-sm text-muted-foreground">
                 <div className="w-2 h-2 bg-red-500 rounded-full mr-2"></div>
@@ -223,6 +300,12 @@ export function NNSInterface() {
               <div className="flex items-center justify-center text-sm text-green-600">
                 <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
                 Required: Nexus Testnet (Chain ID 3940)
+              </div>
+              <div className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
+                <div className="font-medium mb-1">Network Details:</div>
+                <div>• RPC URL: https://testnet3.rpc.nexus.xyz</div>
+                <div>• Chain ID: 3940</div>
+                <div>• Currency: NEX</div>
               </div>
             </CardDescription>
           </CardHeader>
@@ -237,33 +320,10 @@ export function NNSInterface() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header with wallet info and disconnect button */}
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold">Nexus Name Service</h1>
-            </div>
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center space-x-2 text-sm">
-                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                <span className="text-muted-foreground">Nexus Testnet</span>
-              </div>
-              <div className="text-sm">
-                <span className="text-muted-foreground">Connected: </span>
-                <span className="font-mono">{account?.slice(0, 6)}...{account?.slice(-4)}</span>
-              </div>
-              <Button variant="outline" size="sm" onClick={disconnect}>
-                <LogOut className="h-4 w-4 mr-2" />
-                Disconnect
-              </Button>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="bg-background">
+      {/* Top navbar dipindahkan ke App.tsx (fixed-top) untuk menghindari duplikasi */}
 
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-4">
         <div className="text-center mb-8">
           <h2 className="text-3xl font-bold mb-2">Register Your .nex Domain</h2>
           <p className="text-muted-foreground text-lg">
@@ -272,7 +332,7 @@ export function NNSInterface() {
         </div>
 
         <div className="max-w-2xl mx-auto">
-          <Card className="mb-8">
+          <Card className="mb-4">
             <CardHeader>
               <CardTitle>Search Domains</CardTitle>
               <CardDescription>
@@ -297,7 +357,11 @@ export function NNSInterface() {
                   onClick={handleSearch} 
                   disabled={isSearching || !searchTerm}
                 >
-                  <Search className="h-4 w-4" />
+                  {isSearching ? (
+                    <Spinner size="sm" />
+                  ) : (
+                    <Search className="h-4 w-4" />
+                  )}
                 </Button>
               </div>
             </CardContent>
@@ -362,7 +426,25 @@ export function NNSInterface() {
               </CardContent>
             </Card>
           )}
+
+          {/* Registered Domains Dashboard */}
+          <div className="mt-4">
+            <RegisteredDomains refreshTrigger={refreshTrigger} />
+          </div>
         </div>
+
+        {/* Transaction Modal */}
+        <TransactionModal
+          isOpen={transactionModal.isOpen}
+          onClose={() => setTransactionModal({ ...transactionModal, isOpen: false })}
+          status={transactionModal.status}
+          hash={transactionModal.hash}
+          message={transactionModal.message}
+          explorerUrl={transactionModal.hash && chainId ? 
+            `https://testnet3.explorer.nexus.xyz` : 
+            undefined
+          }
+        />
       </div>
     </div>
   )

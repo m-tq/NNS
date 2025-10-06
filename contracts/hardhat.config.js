@@ -11,6 +11,10 @@ module.exports = {
       url: "https://testnet3.rpc.nexus.xyz",
       chainId: 3940,
       accounts: process.env.NEXUS_PRIVATE_KEY ? [process.env.NEXUS_PRIVATE_KEY] : [],
+      timeout: 60000, // 60 seconds
+      httpHeaders: {
+        "User-Agent": "hardhat"
+      }
     },
   },
 };

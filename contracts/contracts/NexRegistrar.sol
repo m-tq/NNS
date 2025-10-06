@@ -5,18 +5,21 @@ import "./NNSRegistry.sol";
 import "./PublicResolver.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title Nex Registrar
- * @dev Manages registration of .nex domains
+ * @dev Manages registration of .nex domains as ERC721 NFTs
  */
-contract NexRegistrar is Ownable, ReentrancyGuard {
+contract NexRegistrar is ERC721, ERC721Enumerable, Ownable, ReentrancyGuard {
     NNSRegistry public immutable registry;
     PublicResolver public immutable resolver;
     
     bytes32 public immutable baseNode; // namehash of "nex"
     
-    uint256 public registrationFee = 0.01 ether; // Fee in NEX
+    uint256 public registrationFee = 0.5 ether; // Fee in NEX
     uint256 public constant MIN_REGISTRATION_DURATION = 365 days;
     uint256 public constant MAX_REGISTRATION_DURATION = 10 * 365 days;
     
@@ -24,13 +27,19 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
         address owner;
         uint256 expires;
         bool exists;
+        uint256 tokenId;
+        string name;
     }
     
     mapping(bytes32 => Domain) public domains;
     mapping(string => bool) public reserved;
+    mapping(uint256 => string) public tokenIdToName;
+    mapping(string => uint256) public nameToTokenId;
+    
+    uint256 private _nextTokenId = 1;
     
     // Events
-    event DomainRegistered(string indexed name, bytes32 indexed label, address indexed owner, uint256 expires);
+    event DomainRegistered(string indexed name, bytes32 indexed label, address indexed owner, uint256 expires, string domainName, uint256 tokenId);
     event DomainRenewed(string indexed name, bytes32 indexed label, uint256 expires);
     event DomainTransferred(string name, bytes32 indexed label, address indexed from, address indexed to);
     event RegistrationFeeChanged(uint256 oldFee, uint256 newFee);
@@ -53,7 +62,7 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
         NNSRegistry _registry,
         PublicResolver _resolver,
         bytes32 _baseNode
-    ) Ownable(msg.sender) {
+    ) ERC721("Nexus Name Service", "NNS") Ownable(msg.sender) {
         registry = _registry;
         resolver = _resolver;
         baseNode = _baseNode;
@@ -97,20 +106,30 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
         require(!domains[label].exists || domains[label].expires < block.timestamp, "Domain already registered");
         
         uint256 expires = block.timestamp + duration;
+        uint256 tokenId = _nextTokenId++;
+        
+        // Mint NFT to the owner
+        _safeMint(owner, tokenId);
         
         // Update domain record
         domains[label] = Domain({
             owner: owner,
             expires: expires,
-            exists: true
+            exists: true,
+            tokenId: tokenId,
+            name: name
         });
+        
+        // Update mappings
+        tokenIdToName[tokenId] = name;
+        nameToTokenId[name] = tokenId;
         
         // Set up NNS records
         // Set the subnode record atomically with owner, resolver, and TTL
         // This transfers ownership to the user in one step
         registry.setSubnodeRecord(baseNode, label, owner, address(resolver), uint64(expires));
         
-        emit DomainRegistered(name, label, owner, expires);
+        emit DomainRegistered(name, label, owner, expires, name, tokenId);
         
         // Refund excess payment
         if (msg.value > registrationFee) {
@@ -154,6 +173,12 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
         require(domains[label].expires > block.timestamp, "Domain expired");
         
         address from = domains[label].owner;
+        uint256 tokenId = domains[label].tokenId;
+        
+        // Transfer NFT
+        _transfer(from, to, tokenId);
+        
+        // Update domain record
         domains[label].owner = to;
         
         // Update NNS ownership
@@ -183,11 +208,29 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
      * @return owner The domain owner
      * @return expires The expiration timestamp
      * @return exists Whether the domain exists
+     * @return tokenId The NFT token ID
      */
-    function getDomain(string calldata name) external view returns (address owner, uint256 expires, bool exists) {
+    function getDomain(string calldata name) external view returns (address owner, uint256 expires, bool exists, uint256 tokenId) {
         bytes32 label = keccak256(bytes(name));
         Domain memory domain = domains[label];
-        return (domain.owner, domain.expires, domain.exists);
+        return (domain.owner, domain.expires, domain.exists, domain.tokenId);
+    }
+    
+    /**
+     * @dev Get all domains owned by an address
+     * @param owner The owner address
+     * @return domainNames Array of domain names owned by the address
+     */
+    function getDomainsOfOwner(address owner) external view returns (string[] memory domainNames) {
+        uint256 balance = balanceOf(owner);
+        domainNames = new string[](balance);
+        
+        for (uint256 i = 0; i < balance; i++) {
+            uint256 tokenId = tokenOfOwnerByIndex(owner, i);
+            domainNames[i] = tokenIdToName[tokenId];
+        }
+        
+        return domainNames;
     }
     
     /**
@@ -250,5 +293,50 @@ contract NexRegistrar is Ownable, ReentrancyGuard {
     function namehash(string calldata name) external view returns (bytes32) {
         bytes32 label = keccak256(bytes(name));
         return keccak256(abi.encodePacked(baseNode, label));
+    }
+    
+    /**
+     * @dev Returns the token URI for a given token ID
+     * @param tokenId The token ID
+     * @return The token URI
+     */
+    function tokenURI(uint256 tokenId) public view override returns (string memory) {
+        require(_ownerOf(tokenId) != address(0), "Token does not exist");
+        
+        string memory domainName = tokenIdToName[tokenId];
+        return string(abi.encodePacked("https://nns.nexus/metadata/", domainName, ".nex"));
+    }
+    
+    /**
+     * @dev Override required by Solidity for multiple inheritance
+     */
+    function _update(address to, uint256 tokenId, address auth)
+        internal
+        override(ERC721, ERC721Enumerable)
+        returns (address)
+    {
+        return super._update(to, tokenId, auth);
+    }
+
+    /**
+     * @dev Override required by Solidity for multiple inheritance
+     */
+    function _increaseBalance(address account, uint128 value)
+        internal
+        override(ERC721, ERC721Enumerable)
+    {
+        super._increaseBalance(account, value);
+    }
+
+    /**
+     * @dev Override required by Solidity for multiple inheritance
+     */
+    function supportsInterface(bytes4 interfaceId)
+        public
+        view
+        override(ERC721, ERC721Enumerable)
+        returns (bool)
+    {
+        return super.supportsInterface(interfaceId);
     }
 }

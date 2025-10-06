@@ -1,0 +1,18 @@
+{
+  "name": "@nns/wallet-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Lightweight SDK for resolving .nex domains via NNS",
+  "types": "dist/index.d.ts",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "scripts": {
+    "build": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  },
+  "dependencies": {
+    "js-sha3": "^0.9.2"
+  }
+}

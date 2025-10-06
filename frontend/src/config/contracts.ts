@@ -1,16 +1,14 @@
 // Contract addresses for different networks
 export const CONTRACT_ADDRESSES = {
-  // Nexus Testnet (Chain ID: 3940)
-  3940: {
-    NNSRegistry: "0xA87F122cB8E4490E004B019305438Dcf1849c21f",
-    PublicResolver: "0xfCF8B4B0010418af078197E0f901f1d9fd5bb6f5",
-    NexRegistrar: "0x7e8F8B3de7053378De2abB412592e0642c05A584",
+  3940: { // Nexus Testnet
+    NNSRegistry: "0x35481Ed34c3E6446EaafDca622369Df4295dce31",
+    PublicResolver: "0x3C7bc6E4C65A194B3Bec187a3D6ef97A61F9DcD5",
+    NexRegistrar: "0x5d716F4b16A135ca401a428B203A7107AD353950",
   },
-  // Local development (Hardhat)
-  31337: {
-    NNSRegistry: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-    PublicResolver: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-    NexRegistrar: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  31337: { // Localhost
+    NNSRegistry: "0x9A9f2CCfdE556A7E9Ff0848998Aa4a0CFD8863AE",
+    PublicResolver: "0x68B1D87F95878fE05B998F19b66F4baba5De1aed",
+    NexRegistrar: "0xc6e7DF5E7b4f2A278906862b61205850344D4e7d",
   }
 };
 
@@ -40,7 +38,12 @@ export const NETWORK_CONFIG = {
 
 // Get contract addresses for current network
 export const getContractAddresses = (chainId: number) => {
-  return CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES] || CONTRACT_ADDRESSES[3940];
+  const addresses = CONTRACT_ADDRESSES[chainId as keyof typeof CONTRACT_ADDRESSES];
+  if (!addresses) {
+    console.warn(`No contract addresses found for chainId ${chainId}, using Nexus Testnet as fallback`);
+    return CONTRACT_ADDRESSES[3940];
+  }
+  return addresses;
 };
 
 // Get network config for current network
